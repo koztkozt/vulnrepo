@@ -15,6 +15,8 @@ import { DialogAddCustomTemplateComponent } from '../dialog-add-custom-template/
 import {OllamaServiceService} from '../ollama-service.service';
 import { UntypedFormControl } from '@angular/forms';
 import {DialogOllamaSettingsComponent} from '../dialog-ollama-settings/dialog-ollama-settings.component';
+import { TemplateService } from '../template.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 export interface ApiList {
   apikey: string;
@@ -91,14 +93,23 @@ export class SettingsComponent implements OnInit {
   displayedColumns: string[] = ['apiname', 'organisation', 'status', 'created', 'expires', 'storage', 'settings'];
   dataSource = new MatTableDataSource<any>([]);
 
+  // DOCX Template management
+  docxTemplates: any[] = [];
+  selectedTemplate: string = '';
+  docxTemplateDataSource = new MatTableDataSource<any>([]);
+  docxTemplateDisplayedColumns: string[] = ['name', 'uploadDate', 'isDefault', 'actions'];
+
 
   constructor(public router: Router, private indexeddbService: IndexeddbService, private apiService: ApiService,
-    public dialog: MatDialog, public sessionsub: SessionstorageserviceService, private currentdateService: CurrentdateService,private ollamaService: OllamaServiceService) { }
+    public dialog: MatDialog, public sessionsub: SessionstorageserviceService, private currentdateService: CurrentdateService,private ollamaService: OllamaServiceService, private templateService: TemplateService, private snackBar: MatSnackBar) { }
 
 
   ngOnInit() {
 
     this.getVault();
+
+    // Load DOCX templates
+    this.loadDocxTemplates();
 
     this.indexeddbService.getkeybyAiintegration().then(ret => {
       
@@ -1063,6 +1074,91 @@ export class SettingsComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       console.log('The AI-Settings dialog was closed');
     });
+  }
+
+  // DOCX Template Management Methods
+
+  /**
+   * Load DOCX templates on component init
+   */
+  async loadDocxTemplates() {
+    try {
+      this.docxTemplates = await this.templateService.getTemplates();
+      this.docxTemplateDataSource.data = this.docxTemplates;
+    } catch (error) {
+      console.error('Error loading DOCX templates:', error);
+    }
+  }
+
+  /**
+   * Handle DOCX template file upload
+   */
+  async uploadDocxTemplate(input: HTMLInputElement) {
+    const files = input.files;
+    if (files && files.length) {
+      const file = files[0];
+      
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.docx')) {
+        this.snackBar.open('Please select a valid DOCX file.', 'Close', { duration: 3000 });
+        return;
+      }
+
+      try {
+        await this.templateService.storeTemplate(file);
+        this.snackBar.open('DOCX template uploaded successfully!', 'Close', { duration: 3000 });
+        await this.loadDocxTemplates(); // Refresh the list
+        
+        // Clear the input
+        input.value = '';
+      } catch (error) {
+        console.error('Error uploading template:', error);
+        this.snackBar.open('Error uploading template. Please try again.', 'Close', { duration: 5000 });
+      }
+    }
+  }
+
+  /**
+   * Set a template as default
+   */
+  async setDefaultTemplate(templateId: string) {
+    try {
+      await this.templateService.setDefaultTemplate(templateId);
+      this.snackBar.open('Default template updated!', 'Close', { duration: 3000 });
+      await this.loadDocxTemplates(); // Refresh the list
+    } catch (error) {
+      console.error('Error setting default template:', error);
+      this.snackBar.open('Error setting default template.', 'Close', { duration: 5000 });
+    }
+  }
+
+  /**
+   * Delete a DOCX template
+   */
+  async deleteDocxTemplate(templateId: string, templateName: string) {
+    if (confirm(`Are you sure you want to delete the template "${templateName}"?`)) {
+      try {
+        await this.templateService.deleteTemplate(templateId);
+        this.snackBar.open('Template deleted successfully!', 'Close', { duration: 3000 });
+        await this.loadDocxTemplates(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting template:', error);
+        this.snackBar.open('Error deleting template.', 'Close', { duration: 5000 });
+      }
+    }
+  }
+
+  /**
+   * Download template guide
+   */
+  async createSampleTemplate() {
+    try {
+      await this.templateService.createDefaultTemplate();
+      this.snackBar.open('Template guide downloaded!', 'Close', { duration: 3000 });
+    } catch (error) {
+      console.error('Error downloading template guide:', error);
+      this.snackBar.open('Error downloading template guide.', 'Close', { duration: 5000 });
+    }
   }
 
 

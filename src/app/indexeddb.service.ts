@@ -1682,6 +1682,126 @@ export class IndexeddbService {
     });
   }
 
+  // DOCX Template management methods
+  
+  /**
+   * Initialize DOCX templates database
+   */
+  private initDocxTemplatesDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+      const open = indexedDB.open('vulnrepo-docx-templates', 1);
+
+      open.onupgradeneeded = function () {
+        const db = open.result;
+        db.createObjectStore('docx-templates', { keyPath: 'id' });
+      };
+
+      open.onsuccess = function () {
+        resolve(open.result);
+      };
+
+      open.onerror = function () {
+        reject(open.error);
+      };
+    });
+  }
+
+  /**
+   * Save a DOCX template to IndexedDB
+   */
+  saveDocxTemplate(template: any): Promise<any> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await this.initDocxTemplatesDB();
+        const transaction = db.transaction(['docx-templates'], 'readwrite');
+        const objectStore = transaction.objectStore('docx-templates');
+        const request = objectStore.put(template);
+
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Get all DOCX templates from IndexedDB
+   */
+  getDocxTemplates(): Promise<any[]> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await this.initDocxTemplatesDB();
+        const transaction = db.transaction(['docx-templates'], 'readonly');
+        const objectStore = transaction.objectStore('docx-templates');
+        const request = objectStore.getAll();
+
+        request.onsuccess = () => {
+          resolve(request.result || []);
+        };
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Get a specific DOCX template by ID
+   */
+  getDocxTemplate(id: string): Promise<any> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await this.initDocxTemplatesDB();
+        const transaction = db.transaction(['docx-templates'], 'readonly');
+        const objectStore = transaction.objectStore('docx-templates');
+        const request = objectStore.get(id);
+
+        request.onsuccess = () => {
+          resolve(request.result || null);
+        };
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Delete a DOCX template from IndexedDB
+   */
+  deleteDocxTemplate(id: string): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await this.initDocxTemplatesDB();
+        const transaction = db.transaction(['docx-templates'], 'readwrite');
+        const objectStore = transaction.objectStore('docx-templates');
+        const request = objectStore.delete(id);
+
+        request.onsuccess = () => {
+          resolve();
+        };
+
+        request.onerror = () => {
+          reject(request.error);
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
 
 
 }

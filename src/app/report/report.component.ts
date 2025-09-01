@@ -42,6 +42,8 @@ import { PageEvent } from '@angular/material/paginator';
 import { DialogEditorFullscreenComponent } from '../dialog-editor-fullscreen/dialog-editor-fullscreen.component';
 import { DialogAttachPreviewComponent } from '../dialog-attach-preview/dialog-attach-preview.component';
 import { AlignmentType, Document, Footer, Header, Packer, PageBreak, HeadingLevel, ImageRun, PageNumber, NumberFormat, Paragraph, TextRun, TableOfContents, Table, TableCell, TableRow, WidthType } from "docx";
+import { TemplateHandler } from 'easy-template-x';
+import { TemplateService } from '../template.service';
 import { UtilsService } from '../utils.service';
 import { OllamaServiceService } from '../ollama-service.service';
 import { DialogOllamaSettingsComponent } from '../dialog-ollama-settings/dialog-ollama-settings.component';
@@ -206,7 +208,8 @@ export class ReportComponent implements OnInit, OnDestroy, AfterViewInit {
     private datePipe: DatePipe,
     private dateAdapter: DateAdapter<Date>,
     private utilsService: UtilsService,
-    private currentdateService: CurrentdateService) {
+    private currentdateService: CurrentdateService,
+    private templateService: TemplateService) {
     //console.log(route);
     this.subscription = this.messageService.getDecrypted().subscribe(message => {
       this.decryptedReportData = message;
@@ -2026,7 +2029,7 @@ Date   | Description
     document.body.removeChild(link);
   }
 
-  DownloadDOCX(report_info): void {
+  DownloadDOCX_OLD(report_info): void {
 
     let generatedby = new TextRun('');
     if (!this.decryptedReportDataChanged.report_settings.report_remove_lastpage) {
@@ -3031,6 +3034,128 @@ Date   | Description
     });
 
 
+  }
+
+  async DownloadDOCX(report_info): Promise<void> {
+    try {
+      // Get the template to use
+      const template = await this.templateService.getDefaultTemplate();
+      
+      if (!template) {
+        // Fallback to old method if no template available
+        this.snackBar.open('No DOCX template found. Please upload a template in Settings.', 'Close', { duration: 5000 });
+        return;
+      }
+
+      // Prepare template data
+      const templateData = this.prepareTemplateData(report_info);
+      
+      // Convert template to ArrayBuffer
+      const templateBuffer = this.templateService.templateToArrayBuffer(template);
+      
+      // Process template with data
+      const handler = new TemplateHandler();
+      const docBuffer = await handler.process(templateBuffer, templateData);
+      
+      // Convert ArrayBuffer to Blob
+      const docBlob = new Blob([docBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      
+      // Download the generated document
+      this.downloadBlob(docBlob, `${report_info.report_name} ${report_info.report_id} (vulnrepo.com).docx`);
+      
+    } catch (error) {
+      console.error('Error generating DOCX:', error);
+      this.snackBar.open('Error generating DOCX report. Please try again.', 'Close', { duration: 5000 });
+    }
+  }
+
+  /**
+   * Prepare data for template processing
+   */
+  prepareTemplateData(report_info) {
+    // Calculate statistics
+    const critical = this.decryptedReportDataChanged.report_vulns.filter(el => el.severity === 'Critical');
+    const high = this.decryptedReportDataChanged.report_vulns.filter(el => el.severity === 'High');
+    const medium = this.decryptedReportDataChanged.report_vulns.filter(el => el.severity === 'Medium');
+    const low = this.decryptedReportDataChanged.report_vulns.filter(el => el.severity === 'Low');
+    const info = this.decryptedReportDataChanged.report_vulns.filter(el => el.severity === 'Info');
+
+    return {
+      // Report metadata
+      report_name: report_info.report_name,
+      report_id: report_info.report_id,
+      report_version: this.decryptedReportDataChanged.report_version,
+      create_date: new Date(report_info.report_createdate).toLocaleDateString(this.setLocal),
+      last_update: new Date(report_info.report_lastupdate).toLocaleDateString(this.setLocal),
+      
+      // Report content
+      scope: this.decryptedReportDataChanged.report_scope || 'No scope defined',
+      summary: this.decryptedReportDataChanged.report_summary || 'No summary provided',
+      
+      // Statistics
+      total_issues: this.decryptedReportDataChanged.report_vulns.length,
+      critical_count: critical.length,
+      high_count: high.length,
+      medium_count: medium.length,
+      low_count: low.length,
+      info_count: info.length,
+      
+      // Logo
+      logo: this.decryptedReportDataChanged.report_settings.report_logo.logo ? {
+        _type: 'image',
+        source: this.decryptedReportDataChanged.report_settings.report_logo.logo,
+        width: this.decryptedReportDataChanged.report_settings.report_logo.width,
+        height: this.decryptedReportDataChanged.report_settings.report_logo.height
+      } : null,
+      
+      // Issues for loops
+      issues: this.decryptedReportDataChanged.report_vulns.map((vuln, index) => ({
+        index: index + 1,
+        title: vuln.title || 'Untitled Issue',
+        severity: vuln.severity || 'Low',
+        description: vuln.desc || 'No description provided',
+        proof_of_concept: vuln.poc || 'No proof of concept provided',
+        references: vuln.ref || 'No references provided',
+        cvss: vuln.cvss || 'N/A',
+        cvss_vector: vuln.cvss_vector || 'N/A',
+        cve: vuln.cve || 'N/A',
+        tags: vuln.tags ? vuln.tags.join(', ') : 'None'
+      })),
+      
+      // Changelog
+      changelog: this.decryptedReportDataChanged.report_changelog.map(entry => ({
+        date: new Date(entry.date).toLocaleString(this.setLocal),
+        description: entry.desc || 'No description'
+      })),
+      
+      // Authors/Researchers
+      researchers: this.decryptedReportDataChanged.researcher?.map(researcher => ({
+        name: researcher.name || 'Unknown',
+        email: researcher.email || 'N/A',
+        role: researcher.role || 'Researcher'
+      })) || [],
+      
+      // Additional metadata
+      generated_by: this.decryptedReportDataChanged.report_settings.report_remove_lastpage ? 
+        '' : '© Generated by vulnrepo.com',
+      confidential: 'CONFIDENTIAL',
+      current_date: new Date().toLocaleDateString(this.setLocal)
+    };
+  }
+
+  /**
+   * Helper method to download blob as file
+   */
+  private downloadBlob(blob: Blob, filename: string): void {
+    const link = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 
   getDataSynchronous(file) {
