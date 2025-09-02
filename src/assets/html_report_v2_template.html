@@ -571,8 +571,19 @@
     		};
 
 			renderer.image = function (token) {
-			//return `<img src="` + DOMPurify.sanitize(token.href) + `" alt="` + DOMPurify.sanitize(token.text) + `" title="` + DOMPurify.sanitize(token.title) + `">`;
-			//disable image parse
+				// Handle PoC image references - Note: In HTML reports, we can't resolve references
+				// So we'll show a placeholder for now
+				if (token.href.startsWith('poc-img:')) {
+					return `<div style="padding: 20px; border: 2px dashed #ccc; text-align: center; color: #666; margin: 10px 0;">
+								[PoC Image: ` + DOMPurify.sanitize(token.text || 'Unknown') + `]
+								<br><small>Note: Image references are not resolved in HTML exports</small>
+							</div>`;
+				}
+				// Enable image rendering for data URLs in PoC content
+				else if (token.href.startsWith('data:image/')) {
+					return `<img src="` + DOMPurify.sanitize(token.href) + `" alt="` + DOMPurify.sanitize(token.text) + `" title="` + DOMPurify.sanitize(token.title) + `" style="max-width: 100%; height: auto; border: 1px solid #ddd; margin: 10px 0;">`;
+				}
+				// For non-data URLs, return as text (security)
 				return DOMPurify.sanitize(token.href);
 			};
 

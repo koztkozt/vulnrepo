@@ -34,6 +34,12 @@
         <mat-icon>table</mat-icon>
       </button>
 
+      <button *ngIf="pocImages.length > 0" mat-icon-button style="padding: 0px;" color="accent" 
+             title="Show Images ({{pocImages.length}})" (click)="showImages=!showImages">
+        <mat-icon>{{showImages ? 'photo_library' : 'photo'}}</mat-icon>
+        <span style="font-size: 10px; position: absolute; top: 2px; right: 2px; background: red; color: white; border-radius: 50%; width: 12px; height: 12px; text-align: center; line-height: 12px;">{{pocImages.length}}</span>
+      </button>
+
       <button mat-icon-button style="padding: 0px;" color="accent" title="Show/Close preview"
         (click)="showprev=!showprev">
         <mat-icon>{{showprev ? 'visibility_off' : 'visibility'}}</mat-icon>
@@ -46,10 +52,48 @@
     </div>
     <mat-divider></mat-divider>
 
+    <!-- Image Gallery -->
+    <div *ngIf="showImages && pocImages.length > 0" style="padding: 10px; background: #f5f5f5; border-bottom: 1px solid #ddd;">
+      <div style="display: flex; align-items: center; margin-bottom: 10px;">
+        <mat-icon style="margin-right: 8px;color: #666">photo_library</mat-icon>
+        <span style="font-weight: bold;color: #666">Images in this PoC ({{pocImages.length}})</span>
+        <div style="flex: 1"></div>
+        <button mat-icon-button style="width: 24px; height: 24px;" title="Hide images" (click)="showImages=false">
+          <mat-icon style="font-size: 16px;">close</mat-icon>
+        </button>
+      </div>
+      
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 120px; overflow-y: auto;">
+        <div *ngFor="let img of pocImages" style="position: relative; border: 1px solid #ccc; border-radius: 4px; background: white;">
+          <img [src]="img.data" [alt]="img.filename" 
+               style="width: 60px; height: 60px; object-fit: cover; cursor: pointer; display: block;"
+               (click)="insertImageReference(img)"
+               [title]="'Click to insert: ' + img.filename">
+          
+          <button mat-icon-button 
+                  style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; min-width: 18px;"
+                  (click)="removePoCImage(img)" 
+                  title="Remove image">
+            <mat-icon style="font-size: 12px; line-height: 12px;color: #666">close</mat-icon>
+          </button>
+          
+          <div style="padding: 2px; font-size: 9px; text-align: center; background: rgba(0,0,0,0.7); color: white; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+            {{img.filename.length > 8 ? img.filename.substring(0, 8) + '...' : img.filename}}
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 8px; font-size: 11px; color: #666;">
+        Click an image to insert it at cursor position • Click ✕ to remove
+      </div>
+    </div>
+
     <div [hidden]="showprev" fxLayout="row wrap" fxLayoutGap="10px grid">
       <div fxFlex="49%" fxFlex.sm="99%" fxFlex.xs="99%">
         <textarea #textareaEl [(ngModel)]="data" (ngModelChange)="onChange($event)" matInput class="textareaeditor"
-          (select)="select($event)" (click)="onclick($event)" cdkFocusInitial></textarea>
+          (select)="select($event)" (click)="onclick($event)" (paste)="onPaste($event)" 
+          (dragover)="onDragOver($event)" (drop)="onDrop($event)" cdkFocusInitial
+          placeholder="Type here... You can paste images with Ctrl+V or drag & drop image files"></textarea>
       </div>
       <div fxFlex="1%" fxFlex.sm="1%" fxFlex.xs="1%">
         <div class="space"></div>
@@ -62,7 +106,9 @@
     <div fxLayout="row wrap" fxLayoutGap="1px grid">
       <div [hidden]="!showprev" fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
         <textarea [(ngModel)]="data" (ngModelChange)="onChange(data)" matInput class="textareaeditor_show"
-          (select)="select($event)" (click)="onclick($event)"></textarea>
+          (select)="select($event)" (click)="onclick($event)" (paste)="onPaste($event)"
+          (dragover)="onDragOver($event)" (drop)="onDrop($event)"
+          placeholder="Type here... You can paste images with Ctrl+V or drag & drop image files"></textarea>
       </div>
     </div>
 

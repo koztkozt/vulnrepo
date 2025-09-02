@@ -42,7 +42,7 @@ import { PageEvent } from '@angular/material/paginator';
 import { DialogEditorFullscreenComponent } from '../dialog-editor-fullscreen/dialog-editor-fullscreen.component';
 import { DialogAttachPreviewComponent } from '../dialog-attach-preview/dialog-attach-preview.component';
 import { AlignmentType, Document, Footer, Header, Packer, PageBreak, HeadingLevel, ImageRun, PageNumber, NumberFormat, Paragraph, TextRun, TableOfContents, Table, TableCell, TableRow, WidthType } from "docx";
-import { TemplateHandler } from 'easy-template-x';
+import { TemplateHandler, MimeType } from 'easy-template-x';
 import { TemplateService } from '../template.service';
 import { UtilsService } from '../utils.service';
 import { OllamaServiceService } from '../ollama-service.service';
@@ -3050,12 +3050,19 @@ Date   | Description
       // Prepare template data
       const templateData = this.prepareTemplateData(report_info);
       
+
+      
+
+      
       // Convert template to ArrayBuffer
       const templateBuffer = this.templateService.templateToArrayBuffer(template);
       
       // Process template with data
       const handler = new TemplateHandler();
+      
+              console.log('Processing template with handler...');
       const docBuffer = await handler.process(templateBuffer, templateData);
+      console.log('Template processing completed, buffer size:', docBuffer.byteLength);
       
       // Convert ArrayBuffer to Blob
       const docBlob = new Blob([docBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
@@ -3070,6 +3077,122 @@ Date   | Description
   }
 
   /**
+   * Parse PoC markdown and prepare for DOCX with images
+   */
+  preparePoCForDocx(pocContent: string, pocImages: any[] = []): any {
+    // Use easy-template-x image plugin format for DOCX generation
+    const images: any = {};
+    let textContent = pocContent;
+    let imageCounter = 1;
+    
+    // Process reference-based images
+    const refImageRegex = /!\[([^\]]*)\]\(poc-img:([^)]+)\)/g;
+    let match;
+    while ((match = refImageRegex.exec(pocContent)) !== null) {
+      const [fullMatch, altText, imageId] = match;
+      
+      // Find the image data
+      const imageData = pocImages.find(img => img.id === imageId);
+      if (imageData) {
+        const imageName = `poc_image_${imageCounter}`;
+        
+        // Convert base64 data URL to buffer
+        const base64Data = imageData.data.split(',')[1]; // Remove data:image/xxx;base64, prefix
+        const imageBuffer = this.base64ToBuffer(base64Data);
+        
+        // Determine format from MIME type
+        let format = 'image/png'; // Default
+        if (imageData.type) {
+          format = imageData.type;
+        }
+        
+        // Create image object for easy-template-x
+        images[imageName] = {
+          _type: "image",
+          source: imageBuffer,
+          format: this.mimeTypeToFormat(format),
+          width: 400,
+          height: 300,
+          altText: altText || imageData.filename || 'PoC Image'
+        };
+        
+        
+        
+        // Replace markdown with template placeholder
+        textContent = textContent.replace(fullMatch, `{${imageName}}`);
+        imageCounter++;
+      } else {
+        // Image not found, replace with text
+        textContent = textContent.replace(fullMatch, `[Missing Image: ${altText}]`);
+      }
+    }
+    
+    // Process direct data URL images (backward compatibility)
+    const dataImageRegex = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/g;
+    while ((match = dataImageRegex.exec(pocContent)) !== null) {
+      const [fullMatch, altText, dataURL] = match;
+      
+      const imageName = `poc_image_${imageCounter}`;
+      
+      // Convert base64 data URL to buffer
+      const base64Data = dataURL.split(',')[1];
+      const imageBuffer = this.base64ToBuffer(base64Data);
+      
+      // Extract format from data URL
+      const formatMatch = dataURL.match(/data:image\/([^;]+)/);
+      const format = formatMatch ? `image/${formatMatch[1]}` : 'image/png';
+      
+      images[imageName] = {
+        _type: "image",
+        source: imageBuffer,
+        format: this.mimeTypeToFormat(format),
+        width: 400,
+        height: 300,
+        altText: altText || 'PoC Image'
+      };
+      
+      textContent = textContent.replace(fullMatch, `{${imageName}}`);
+      imageCounter++;
+    }
+    
+    
+    
+
+      
+      return {
+        text: textContent,
+        images: images
+      };
+  }
+
+  // Helper method to convert base64 to buffer
+  private base64ToBuffer(base64: string): ArrayBuffer {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer; // Return ArrayBuffer, not Uint8Array
+  }
+
+  // Helper method to convert MIME type to easy-template-x format
+  private mimeTypeToFormat(mimeType: string): any {
+    switch (mimeType.toLowerCase()) {
+      case 'image/png':
+        return MimeType.Png;
+      case 'image/jpeg':
+      case 'image/jpg':
+        return MimeType.Jpeg;
+      case 'image/gif':
+        return MimeType.Gif;
+      case 'image/bmp':
+        return MimeType.Bmp;
+      default:
+        return MimeType.Png; // Default fallback
+    }
+  }
+
+  /**
    * Prepare data for template processing
    */
   prepareTemplateData(report_info) {
@@ -3080,7 +3203,7 @@ Date   | Description
     const low = this.decryptedReportDataChanged.report_vulns.filter(el => el.severity === 'Low');
     const info = this.decryptedReportDataChanged.report_vulns.filter(el => el.severity === 'Info');
 
-    return {
+    const templateData: any = {
       // Report metadata
       report_name: report_info.report_name,
       report_id: report_info.report_id,
@@ -3100,27 +3223,30 @@ Date   | Description
       low_count: low.length,
       info_count: info.length,
       
-      // Logo
-      logo: this.decryptedReportDataChanged.report_settings.report_logo.logo ? {
-        _type: 'image',
-        source: this.decryptedReportDataChanged.report_settings.report_logo.logo,
-        width: this.decryptedReportDataChanged.report_settings.report_logo.width,
-        height: this.decryptedReportDataChanged.report_settings.report_logo.height
-      } : null,
-      
       // Issues for loops
-      issues: this.decryptedReportDataChanged.report_vulns.map((vuln, index) => ({
-        index: index + 1,
-        title: vuln.title || 'Untitled Issue',
-        severity: vuln.severity || 'Low',
-        description: vuln.desc || 'No description provided',
-        proof_of_concept: vuln.poc || 'No proof of concept provided',
-        references: vuln.ref || 'No references provided',
-        cvss: vuln.cvss || 'N/A',
-        cvss_vector: vuln.cvss_vector || 'N/A',
-        cve: vuln.cve || 'N/A',
-        tags: vuln.tags ? vuln.tags.join(', ') : 'None'
-      })),
+      issues: this.decryptedReportDataChanged.report_vulns.map((vuln, index) => {
+        const pocResult = this.preparePoCForDocx(vuln.poc || 'No proof of concept provided', vuln.poc_images || []);
+        
+
+        
+        const issueData: any = {
+          index: index + 1,
+          title: vuln.title || 'Untitled Issue',
+          severity: vuln.severity || 'Low',
+          description: vuln.desc || 'No description provided',
+          proof_of_concept: pocResult.text,
+          references: vuln.ref || 'No references provided',
+          cvss: vuln.cvss || 'N/A',
+          cvss_vector: vuln.cvss_vector || 'N/A',
+          cve: vuln.cve || 'N/A',
+          tags: vuln.tags ? vuln.tags.join(', ') : 'None'
+        };
+        
+                           // Add images to the issue data
+          Object.assign(issueData, pocResult.images);
+         
+         return issueData;
+      }),
       
       // Changelog
       changelog: this.decryptedReportDataChanged.report_changelog.map(entry => ({
@@ -3141,6 +3267,18 @@ Date   | Description
       confidential: 'CONFIDENTIAL',
       current_date: new Date().toLocaleDateString(this.setLocal)
     };
+
+    // Add logo only if it exists
+    if (this.decryptedReportDataChanged.report_settings.report_logo.logo) {
+      templateData.logo = {
+        _type: 'image',
+        source: this.decryptedReportDataChanged.report_settings.report_logo.logo,
+        width: this.decryptedReportDataChanged.report_settings.report_logo.width,
+        height: this.decryptedReportDataChanged.report_settings.report_logo.height
+      };
+    }
+
+    return templateData;
   }
 
   /**
@@ -3635,13 +3773,31 @@ Date   | Description
       height: '100%',
       width: '100%',
       disableClose: false,
-      data: this.decryptedReportDataChanged.report_vulns[index].poc
+      data: {
+        content: this.decryptedReportDataChanged.report_vulns[index].poc,
+        pocImages: this.decryptedReportDataChanged.report_vulns[index].poc_images || []
+      }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       console.log('The Editor-fullscreen dialog was closed');
-      if (result || result == '') {
-        this.decryptedReportDataChanged.report_vulns[index].poc = result;
+      if (result) {
+        if (typeof result === 'string') {
+          // Legacy: just content
+          this.decryptedReportDataChanged.report_vulns[index].poc = result;
+        } else {
+          // New: content + images
+          this.decryptedReportDataChanged.report_vulns[index].poc = result.content || '';
+          if (result.pocImages && result.pocImages.length > 0) {
+            // Initialize poc_images if it doesn't exist
+            if (!this.decryptedReportDataChanged.report_vulns[index].poc_images) {
+              this.decryptedReportDataChanged.report_vulns[index].poc_images = [];
+            }
+            // Store PoC images
+            this.decryptedReportDataChanged.report_vulns[index].poc_images = result.pocImages;
+          }
+        }
+        this.afterDetectionNow();
       }
     });
 
@@ -3661,7 +3817,12 @@ Date   | Description
     dialogRef.afterClosed().subscribe(result => {
       console.log('The Editor-fullscreen dialog was closed');
       if (result) {
-        this.decryptedReportDataChanged.report_scope = result;
+        // Handle both string and object returns (scope editor should only return strings)
+        if (typeof result === 'string') {
+          this.decryptedReportDataChanged.report_scope = result;
+        } else {
+          this.decryptedReportDataChanged.report_scope = result.content || '';
+        }
       }
     });
 

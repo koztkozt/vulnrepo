@@ -37,9 +37,11 @@ export class DialogEditorFullscreenComponent implements OnInit {
 
   previewfield = new UntypedFormControl();
   showprev = false;
+  showImages = false; // Show/hide image gallery
   selectedtextarea: any;
   selectedtextarea_start: any;
   selectedtextarea_end: any;
+  pocImages: any[] = []; // Store PoC images
 
   @ViewChild('textareaEl', { static: false}) textareaElement: ElementRef<HTMLTextAreaElement>;
   // @ts-ignore
@@ -48,9 +50,152 @@ export class DialogEditorFullscreenComponent implements OnInit {
   ngOnInit() {
 
     if(this.data) {
-      this.poc_preview_funct(this.data);
+      // Handle both old format (string) and new format (object with content + images)
+      if (typeof this.data === 'string') {
+        // Legacy format: just content
+        this.poc_preview_funct(this.data);
+      } else {
+        // New format: object with content and pocImages
+        const content = this.data.content || '';
+        this.pocImages = this.data.pocImages || [];
+        this.data = content; // Set data to the content string
+        this.poc_preview_funct(this.data);
+        
+        // Show images gallery if there are images
+        if (this.pocImages.length > 0) {
+          this.showImages = true;
+        }
+      }
     }
   
+  }
+
+  // Handle clipboard paste for images
+  onPaste(event: ClipboardEvent): void {
+    const clipboardData = event.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      
+      // Check if the item is an image
+      if (item.type.startsWith('image/')) {
+        event.preventDefault(); // Prevent default paste behavior
+        
+        const file = item.getAsFile();
+        if (file) {
+          this.processImageFile(file);
+        }
+        break;
+      }
+    }
+  }
+
+  // Process image file and insert into markdown
+  processImageFile(file: File): void {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataURL = e.target?.result as string;
+      const imageId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      
+      // Store image data
+      const imageData = {
+        id: imageId,
+        data: dataURL,
+        filename: file.name || 'pasted_image.png',
+        type: file.type,
+        size: file.size
+      };
+      
+      this.pocImages.push(imageData);
+      
+      // Insert markdown image syntax with short reference
+      const imageMarkdown = `![${imageData.filename}](poc-img:${imageId})`;
+      this.insertAtCursor(imageMarkdown);
+      
+      // Update preview
+      this.poc_preview_funct(this.data);
+      
+      // Auto-show gallery if this is the first image
+      if (this.pocImages.length === 1) {
+        this.showImages = true;
+      }
+    };
+    
+    reader.readAsDataURL(file);
+  }
+
+  // Handle drag over event
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  // Handle drop event for images
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const files = event.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      if (file.type.startsWith('image/')) {
+        this.processImageFile(file);
+        break; // Only process first image
+      }
+    }
+  }
+
+  // Insert image reference from gallery
+  insertImageReference(img: any): void {
+    const imageMarkdown = `![${img.filename}](poc-img:${img.id})`;
+    this.insertAtCursor(imageMarkdown);
+    this.poc_preview_funct(this.data);
+  }
+
+  // Remove PoC image
+  removePoCImage(img: any): void {
+    const index = this.pocImages.indexOf(img);
+    if (index > -1) {
+      this.pocImages.splice(index, 1);
+      
+      // Remove all references to this image from markdown
+      const imageRef = `poc-img:${img.id}`;
+      const regex = new RegExp(`!\\[[^\\]]*\\]\\(${imageRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g');
+      this.data = this.data.replace(regex, '[Removed Image]');
+      
+      this.poc_preview_funct(this.data);
+      
+      // Hide gallery if no images left
+      if (this.pocImages.length === 0) {
+        this.showImages = false;
+      }
+    }
+  }
+
+  // Insert text at current cursor position
+  insertAtCursor(text: string): void {
+    const start = this.selectedtextarea_start || 0;
+    const end = this.selectedtextarea_end || 0;
+    
+    this.data = this.data.slice(0, start) + text + this.data.slice(end);
+    
+    // Set cursor after inserted text
+    const newPosition = start + text.length;
+    this.selectedtextarea_start = newPosition;
+    this.selectedtextarea_end = newPosition;
+    
+    // Focus textarea and set cursor
+    setTimeout(() => {
+      if (this.textareaElement) {
+        this.textareaElement.nativeElement.focus();
+        this.textareaElement.nativeElement.setSelectionRange(newPosition, newPosition);
+      }
+    }, 0);
   }
 
   saniteizeme(code) {
@@ -58,7 +203,10 @@ export class DialogEditorFullscreenComponent implements OnInit {
   }
 
   cancel(): void {
-    this.dialogRef.close(this.data);
+    this.dialogRef.close({
+      content: this.data,
+      pocImages: this.pocImages
+    });
   }
 
   poc_preview_funct(value): void {
@@ -103,10 +251,24 @@ export class DialogEditorFullscreenComponent implements OnInit {
     };
 
     renderer.image = function (token) {
-      //return `<img src="` + DOMPurify.sanitize(token.href) + `" alt="` + DOMPurify.sanitize(token.text) + `" title="` + DOMPurify.sanitize(token.title) + `">`;
-      //disable image parse
+      // Handle PoC image references
+      if (token.href.startsWith('poc-img:')) {
+        const imageId = token.href.replace('poc-img:', '');
+        const imageData = this.pocImages.find(img => img.id === imageId);
+        
+        if (imageData) {
+          return `<img src="` + DOMPurify.sanitize(imageData.data) + `" alt="` + DOMPurify.sanitize(token.text || '') + `" title="` + DOMPurify.sanitize(token.title || '') + `" style="max-width: 100%; height: auto; border: 1px solid #ddd; margin: 5px 0;">`;
+        } else {
+          return `<div style="padding: 10px; border: 2px dashed #ccc; text-align: center; color: #666;">[Missing Image: ${DOMPurify.sanitize(token.text || 'Unknown')}]</div>`;
+        }
+      }
+      // Enable image rendering for data URLs (for backward compatibility)
+      else if (token.href.startsWith('data:image/')) {
+        return `<img src="` + DOMPurify.sanitize(token.href) + `" alt="` + DOMPurify.sanitize(token.text || '') + `" title="` + DOMPurify.sanitize(token.title || '') + `" style="max-width: 100%; height: auto; border: 1px solid #ddd; margin: 5px 0;">`;
+      }
+      // For non-data URLs, return as text (security)
       return DOMPurify.sanitize(token.href);
-    };
+    }.bind(this);
 
     renderer.link = function( token: any ) {
 
