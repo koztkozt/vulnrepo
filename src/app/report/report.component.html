@@ -423,13 +423,13 @@
           <div fxLayout="row wrap" fxLayoutGap="10px grid">
 
             <div fxLayout="row wrap" fxFlex="50%" fxFlex.sm="100%" fxFlex.xs="100%">
-
+              
               <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
                 <mat-form-field appearance="outline" class="example-full-width" color="accent">
                   <mat-label>Description</mat-label>
 
                   <div style="position:relative;">
-                    <textarea [(ngModel)]="dec_data.desc" matInput rows="6" style="display:block;"></textarea>
+                    <textarea [(ngModel)]="dec_data.desc" matInput rows="3" style="display:block;"></textarea>
 
                     <div style="position:absolute;top: 10px; right: 10px;">
                       <button mat-icon-button color="accent" (click)="editorFullscreenDesc(dec_data)"
@@ -440,6 +440,13 @@
 
                   </div>
 
+                </mat-form-field>
+              </div>
+
+              <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
+                <mat-form-field appearance="outline" class="example-full-width" color="accent">
+                  <mat-label>References</mat-label>
+                  <textarea [(ngModel)]="dec_data.ref" matInput rows="3"></textarea>
                 </mat-form-field>
               </div>
 
@@ -468,19 +475,21 @@
 
                 <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
                   <mat-form-field appearance="outline" class="example-full-width" color="accent">
-                    <mat-label>References</mat-label>
-                    <textarea [(ngModel)]="dec_data.ref" matInput rows="2"></textarea>
+                    <mat-label>Affected Assets/Paths</mat-label>
+                    <textarea [(ngModel)]="dec_data.affected_assets" matInput rows="3" placeholder="e.g., /admin/login, 192.168.1.10, api.example.com/user"></textarea>
                   </mat-form-field>
                 </div>
 
                 <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
                   <mat-form-field appearance="outline" class="example-full-width" color="accent">
-                    <mat-label>Affected Assets/Paths</mat-label>
-                    <textarea [(ngModel)]="dec_data.affected_assets" matInput rows="2" placeholder="e.g., /admin/login, 192.168.1.10, api.example.com/user"></textarea>
+                    <mat-label>Recommendations</mat-label>
+                    <textarea [(ngModel)]="dec_data.recommendations" matInput rows="3" placeholder="e.g., Update to latest version, implement input validation, configure proper access controls"></textarea>
                   </mat-form-field>
                 </div>
 
-                <div fxFlex="40%" fxFlex.sm="50%" fxFlex.xs="100%">
+
+
+                <div fxFlex="50%" fxFlex.sm="50%" fxFlex.xs="100%">
                   <mat-form-field class="example-full-width" color="accent">
                     <input matInput placeholder="CVSS" [(ngModel)]="dec_data.cvss" value="{{dec_data.cvss}}">
                     <button mat-button (click)="openDialogCVSS(dec_data)" style="line-height: 25px;" color="accent"
@@ -491,7 +500,7 @@
                   </mat-form-field>
                 </div>
 
-                <div fxFlex="60%" fxFlex.sm="50%" fxFlex.xs="100%">
+                <div fxFlex="50%" fxFlex.sm="50%" fxFlex.xs="100%">
                   <mat-form-field class="example-full-width" color="accent">
                     <input matInput placeholder="CVE" [(ngModel)]="dec_data.cve" value="{{dec_data.cve}}">
                     <button mat-button (click)="openDialogCVE(dec_data)" style="line-height: 25px;" color="accent"
@@ -501,7 +510,7 @@
                   </mat-form-field>
                 </div>
 
-                <div fxLayout="row wrap" fxLayoutGap="5px grid" *ngIf="dec_data?.bounty" fxFlex="100%" fxFlex.sm="100%"
+                <!-- <div fxLayout="row wrap" fxLayoutGap="5px grid" *ngIf="dec_data?.bounty" fxFlex="100%" fxFlex.sm="100%"
                   fxFlex.xs="100%">
 
                   <div style="display: inline;text-align: end;" fxFlex="80%" fxFlex.sm="80%" fxFlex.xs="100%">
@@ -524,7 +533,7 @@
                     </button>
                   </div>
 
-                </div>
+                </div> -->
 
               </div>
 

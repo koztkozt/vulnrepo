@@ -3420,6 +3420,7 @@ Date   | Description
 
           references: vuln.ref || 'No references provided',
           affected_assets: vuln.affected_assets || 'No affected assets specified',
+          recommendations: vuln.recommendations || 'No recommendations provided',
           cvss: vuln.cvss || 'N/A',
           cvss_vector: vuln.cvss_vector || 'N/A',
           cve: vuln.cve || 'N/A',
