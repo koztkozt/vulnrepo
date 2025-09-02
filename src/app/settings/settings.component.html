@@ -433,7 +433,10 @@
             <h4>Loops (for repeating data):</h4>
             <ul>
               <li><code>{{ '{' }}#issues{{ '}' }} ... {{ '{' }}/issues{{ '}' }}</code> - Loop through all issues</li>
-              <li>Inside issues loop: <code>{{ '{' }}title{{ '}' }}</code>, <code>{{ '{' }}severity{{ '}' }}</code>, <code>{{ '{' }}description{{ '}' }}</code>, <code>{{ '{' }}proof_of_concept{{ '}' }}</code></li>
+              <li>Inside issues loop: <code>{{ '{' }}title{{ '}' }}</code>, <code>{{ '{' }}severity{{ '}' }}</code>, <code>{{ '{' }}description{{ '}' }}</code></li>
+              <li>For formatted PoC (simple): <code>{{ '{' }}proof_of_concept_formatted{{ '}' }}</code> (recommended)</li>
+              <li>For formatted PoC (advanced): <code>{{ '{' }}#poc_blocks{{ '}' }}{{ '{' }}content{{ '}' }}{{ '{' }}/poc_blocks{{ '}' }}</code></li>
+              <li>For plain PoC: <code>{{ '{' }}proof_of_concept{{ '}' }}</code> (legacy)</li>
               <li><code>{{ '{' }}#changelog{{ '}' }} ... {{ '{' }}/changelog{{ '}' }}</code> - Loop through changelog entries</li>
               <li><code>{{ '{' }}#researchers{{ '}' }} ... {{ '{' }}/researchers{{ '}' }}</code> - Loop through researchers</li>
             </ul>

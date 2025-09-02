@@ -3050,19 +3050,13 @@ Date   | Description
       // Prepare template data
       const templateData = this.prepareTemplateData(report_info);
       
-
-      
-
-      
       // Convert template to ArrayBuffer
       const templateBuffer = this.templateService.templateToArrayBuffer(template);
       
       // Process template with data
       const handler = new TemplateHandler();
       
-              console.log('Processing template with handler...');
       const docBuffer = await handler.process(templateBuffer, templateData);
-      console.log('Template processing completed, buffer size:', docBuffer.byteLength);
       
       // Convert ArrayBuffer to Blob
       const docBlob = new Blob([docBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
@@ -3077,92 +3071,90 @@ Date   | Description
   }
 
   /**
-   * Parse PoC markdown and prepare for DOCX with images
+   * Parse PoC markdown and prepare for DOCX with images and formatted blocks
    */
   preparePoCForDocx(pocContent: string, pocImages: any[] = []): any {
-    // Use easy-template-x image plugin format for DOCX generation
     const images: any = {};
-    let textContent = pocContent;
+    const blocks: any[] = [];
+    let cursor = 0;
+    const content = pocContent || '';
+    const imgRe = /!\[([^\]]*)\]\((poc-img:[^)]+|data:image\/[^)]+)\)/g;
+    let m;
     let imageCounter = 1;
-    
-    // Process reference-based images
-    const refImageRegex = /!\[([^\]]*)\]\(poc-img:([^)]+)\)/g;
-    let match;
-    while ((match = refImageRegex.exec(pocContent)) !== null) {
-      const [fullMatch, altText, imageId] = match;
-      
-      // Find the image data
-      const imageData = pocImages.find(img => img.id === imageId);
-      if (imageData) {
-        const imageName = `poc_image_${imageCounter}`;
+
+    let blockCounter = 1;
+    const pushTextBlock = (text: string) => {
+      const trimmed = text.trim();
+      if (trimmed && trimmed.length) {
+        const paragraphBlocks = this.markdownToParagraphBlocks(trimmed);
         
-        // Convert base64 data URL to buffer
-        const base64Data = imageData.data.split(',')[1]; // Remove data:image/xxx;base64, prefix
-        const imageBuffer = this.base64ToBuffer(base64Data);
-        
-        // Determine format from MIME type
-        let format = 'image/png'; // Default
-        if (imageData.type) {
-          format = imageData.type;
+        // Add each paragraph as a separate block
+        paragraphBlocks.forEach(paragraphBlock => {
+          const blockName = `poc_block_${blockCounter++}`;
+          blocks.push({
+            name: blockName,
+            content: paragraphBlock
+          });
+        });
+      }
+    };
+
+    while ((m = imgRe.exec(content)) !== null) {
+      const [full, altText, src] = m;
+      const before = content.slice(cursor, m.index);
+      pushTextBlock(before);
+      cursor = m.index + full.length;
+
+      let imageBuffer: ArrayBuffer | null = null;
+      let format = 'image/png';
+
+      if (src.startsWith('poc-img:')) {
+        const imageId = src.substring('poc-img:'.length);
+        const imageData = pocImages.find(img => img.id === imageId);
+        if (imageData) {
+          const base64Data = (imageData.data || '').split(',')[1] || '';
+          imageBuffer = this.base64ToBuffer(base64Data);
+          format = imageData.type || format;
         }
-        
-        // Create image object for easy-template-x
-        images[imageName] = {
-          _type: "image",
+      } else if (src.startsWith('data:image/')) {
+        const base64Data = src.split(',')[1] || '';
+        imageBuffer = this.base64ToBuffer(base64Data);
+        const fmt = src.match(/data:image\/([^;]+)/);
+        format = fmt ? `image/${fmt[1]}` : format;
+      }
+
+      if (imageBuffer) {
+        const imageName = `poc_image_${imageCounter++}`;
+        const imgObj = {
+          _type: 'image',
           source: imageBuffer,
           format: this.mimeTypeToFormat(format),
           width: 400,
           height: 300,
-          altText: altText || imageData.filename || 'PoC Image'
+          altText: altText || 'PoC Image'
         };
-        
-        
-        
-        // Replace markdown with template placeholder
-        textContent = textContent.replace(fullMatch, `{${imageName}}`);
-        imageCounter++;
+        // for legacy templates that directly place {poc_image_N}
+        images[imageName] = imgObj;
+        // for new templates (mixed content)
+        const blockName = `poc_block_${blockCounter++}`;
+        blocks.push({
+          name: blockName,
+          content: imgObj
+        });
       } else {
-        // Image not found, replace with text
-        textContent = textContent.replace(fullMatch, `[Missing Image: ${altText}]`);
+        pushTextBlock(`[Missing Image: ${altText}]`);
       }
     }
-    
-    // Process direct data URL images (backward compatibility)
-    const dataImageRegex = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/g;
-    while ((match = dataImageRegex.exec(pocContent)) !== null) {
-      const [fullMatch, altText, dataURL] = match;
-      
-      const imageName = `poc_image_${imageCounter}`;
-      
-      // Convert base64 data URL to buffer
-      const base64Data = dataURL.split(',')[1];
-      const imageBuffer = this.base64ToBuffer(base64Data);
-      
-      // Extract format from data URL
-      const formatMatch = dataURL.match(/data:image\/([^;]+)/);
-      const format = formatMatch ? `image/${formatMatch[1]}` : 'image/png';
-      
-      images[imageName] = {
-        _type: "image",
-        source: imageBuffer,
-        format: this.mimeTypeToFormat(format),
-        width: 400,
-        height: 300,
-        altText: altText || 'PoC Image'
-      };
-      
-      textContent = textContent.replace(fullMatch, `{${imageName}}`);
-      imageCounter++;
-    }
-    
-    
-    
 
-      
-      return {
-        text: textContent,
-        images: images
-      };
+    // tail
+    const tail = content.slice(cursor);
+    pushTextBlock(tail);
+
+    return {
+      text: content,       // legacy: plain markdown text
+      images: images,      // legacy: expose each {poc_image_N}
+      blocks: blocks       // new: rich sequence of rawXml paragraphs and images
+    };
   }
 
   // Helper method to convert base64 to buffer
@@ -3190,6 +3182,196 @@ Date   | Description
       default:
         return MimeType.Png; // Default fallback
     }
+  }
+
+  // Helper method to escape XML characters
+  private escapeXml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  // Helper method to build WordprocessingML run elements
+  private buildRunXml(text: string, opts: { bold?: boolean; italic?: boolean; code?: boolean; } = {}): string {
+    const prParts: string[] = [];
+    if (opts.bold) prParts.push('<w:b/>');
+    if (opts.italic) prParts.push('<w:i/>');
+    if (opts.code) prParts.push('<w:rFonts w:ascii="Courier New" w:hAnsi="Courier New"/>');
+    const rPr = prParts.length ? `<w:rPr>${prParts.join('')}</w:rPr>` : '';
+    
+    // Handle newlines in code blocks
+    if (opts.code && text.includes('\n')) {
+      const lines = text.split('\n');
+      const runs: string[] = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const escapedLine = this.escapeXml(lines[i]);
+        runs.push(`<w:r>${rPr}<w:t xml:space="preserve">${escapedLine}</w:t></w:r>`);
+        
+        // Add line break (except for last line)
+        if (i < lines.length - 1) {
+          runs.push(`<w:r>${rPr}<w:br/></w:r>`);
+        }
+      }
+      
+      return runs.join('');
+    }
+    
+    // Normal single-line text
+    const t = this.escapeXml(text);
+    return `<w:r>${rPr}<w:t xml:space="preserve">${t}</w:t></w:r>`;
+  }
+
+  // Helper method to build WordprocessingML paragraph elements
+  private buildParagraphXml(runsXml: string, opts: { headingLevel?: number; codeBlock?: boolean } = {}): string {
+    let pPr = '';
+    
+    if (opts.headingLevel && opts.headingLevel >= 1 && opts.headingLevel <= 3) {
+      // mimic heading by larger size + bold
+      const sizes = {1: 36, 2: 28, 3: 24};
+      const sz = sizes[opts.headingLevel as 1|2|3] || 24;
+      pPr = `<w:pPr><w:rPr><w:b/><w:sz w:val="${sz}"/></w:rPr></w:pPr>`;
+    } else if (opts.codeBlock) {
+      // Add gray background shading for code blocks
+      pPr = `<w:pPr><w:shd w:val="clear" w:color="auto" w:fill="F5F5F5"/></w:pPr>`;
+    }
+    
+    return `<w:p>${pPr}${runsXml}</w:p>`;
+  }
+
+  // Helper method to parse inline Markdown formatting
+  private parseInlineMarkdown(line: string): Array<{text: string; bold?: boolean; italic?: boolean; code?: boolean;}> {
+    // very small subset: **bold**, *italic*, `code`
+    const tokens: Array<{text: string; bold?: boolean; italic?: boolean; code?: boolean;}> = [];
+    let i = 0;
+    const push = (txt: string, fmt?: any) => { if (txt) tokens.push({ text: txt, ...fmt }); };
+
+    while (i < line.length) {
+      if (line.startsWith('**', i)) {
+        const end = line.indexOf('**', i + 2);
+        if (end > -1) { push(line.slice(i + 2, end), { bold: true }); i = end + 2; continue; }
+      }
+      if (line.startsWith('*', i)) {
+        const end = line.indexOf('*', i + 1);
+        if (end > -1) { push(line.slice(i + 1, end), { italic: true }); i = end + 1; continue; }
+      }
+      if (line.startsWith('`', i)) {
+        const end = line.indexOf('`', i + 1);
+        if (end > -1) { push(line.slice(i + 1, end), { code: true }); i = end + 1; continue; }
+      }
+      // normal char
+      const next = Math.min(
+        ...['**', '*', '`'].map(t => { const p = line.indexOf(t, i); return p === -1 ? Number.POSITIVE_INFINITY : p; })
+      );
+      const end = next === Number.POSITIVE_INFINITY ? line.length : next;
+      push(line.slice(i, end));
+      i = end;
+    }
+    return tokens;
+  }
+
+  // Helper method to convert Markdown to array of paragraph blocks
+  private markdownToParagraphBlocks(md: string): Array<{_type: string, xml: string, replaceParagraph: boolean}> {
+
+    const lines = md.split(/\r?\n/);
+    const blocks: Array<{_type: string, xml: string, replaceParagraph: boolean}> = [];
+    let inCode = false;
+    let codeBuf: string[] = [];
+
+    const addBlock = (xml: string) => {
+      if (xml.trim()) {
+        blocks.push({
+          _type: 'rawXml',
+          xml: xml,
+          replaceParagraph: true
+        });
+      }
+    };
+
+    for (let idx = 0; idx < lines.length; idx++) {
+      const raw = lines[idx];
+
+      // code fence
+      if (raw.trim().startsWith('```')) {
+        if (!inCode) { inCode = true; codeBuf = []; }
+        else {
+          const codeText = codeBuf.join('\n');
+          addBlock(this.buildParagraphXml(this.buildRunXml(codeText, { code: true }), { codeBlock: true }));
+          inCode = false; codeBuf = [];
+        }
+        continue;
+      }
+      if (inCode) { 
+        codeBuf.push(raw); 
+        continue; 
+      }
+
+      // images handled elsewhere; keep line if includes other text
+      if (/!\[[^\]]*]\([^)]+\)/.test(raw) && raw.trim().match(/^!\[[^\]]*]\([^)]+\)$/)) {
+        // pure image line: skip here; image will be injected as its own block
+        continue;
+      }
+
+      // headings
+      const h = raw.match(/^(#{1,6})\s+(.*)$/);
+      if (h) {
+        const level = Math.min(h[1].length, 3);
+        const inline = this.parseInlineMarkdown(h[2]).map(tok => this.buildRunXml(tok.text, { ...tok, bold: true })).join('');
+        addBlock(this.buildParagraphXml(inline, { headingLevel: level }));
+        continue;
+      }
+
+      // unordered list
+      const ul = raw.match(/^[-*]\s+(.*)$/);
+      if (ul) {
+        const content = `• ${ul[1]}`;
+        const inline = this.parseInlineMarkdown(content).map(tok => this.buildRunXml(tok.text, tok)).join('');
+        addBlock(this.buildParagraphXml(inline));
+        continue;
+      }
+
+      // ordered list
+      const ol = raw.match(/^(\d+)\.\s+(.*)$/);
+      if (ol) {
+        const content = `${ol[1]}. ${ol[2]}`;
+        const inline = this.parseInlineMarkdown(content).map(tok => this.buildRunXml(tok.text, tok)).join('');
+        addBlock(this.buildParagraphXml(inline));
+        continue;
+      }
+
+      // blockquote
+      const bq = raw.match(/^>\s+(.*)$/);
+      if (bq) {
+        const inline = this.parseInlineMarkdown(bq[1]).map(tok => this.buildRunXml(tok.text, { ...tok, italic: true })).join('');
+        addBlock(this.buildParagraphXml(inline));
+        continue;
+      }
+
+      // blank line -> skip (don't add empty paragraphs)
+      if (!raw.trim()) { 
+        continue; 
+      }
+
+      // normal paragraph
+      const inline = this.parseInlineMarkdown(raw).map(tok => this.buildRunXml(tok.text, tok)).join('');
+      addBlock(this.buildParagraphXml(inline));
+    }
+
+    // if ended inside code block (unclosed), flush as code
+    if (inCode && codeBuf.length) {
+      addBlock(this.buildParagraphXml(this.buildRunXml(codeBuf.join('\n'), { code: true }), { codeBlock: true }));
+    }
+
+    return blocks;
+  }
+
+  // Legacy method for backward compatibility
+  private markdownToRawXml(md: string): string {
+    const blocks = this.markdownToParagraphBlocks(md);
+    return blocks.map(b => b.xml).join('');
   }
 
   /**
@@ -3234,16 +3416,25 @@ Date   | Description
           title: vuln.title || 'Untitled Issue',
           severity: vuln.severity || 'Low',
           description: vuln.desc || 'No description provided',
-          proof_of_concept: pocResult.text,
+          proof_of_concept: pocResult.text,       // legacy
+
           references: vuln.ref || 'No references provided',
           cvss: vuln.cvss || 'N/A',
           cvss_vector: vuln.cvss_vector || 'N/A',
           cve: vuln.cve || 'N/A',
-          tags: vuln.tags ? vuln.tags.join(', ') : 'None'
+          tags: vuln.tags ? vuln.tags.join(', ') : 'None',
+          poc_blocks: pocResult.blocks            // new (array for loop)
         };
         
-                           // Add images to the issue data
-          Object.assign(issueData, pocResult.images);
+        // Add legacy image keys (optional for backward compatibility)
+        Object.assign(issueData, pocResult.images);
+        
+        // Add each block as a named property for direct reference
+        pocResult.blocks.forEach(block => {
+          if (block.name) {
+            issueData[block.name] = block.content;
+          }
+        });
          
          return issueData;
       }),
@@ -4044,3 +4235,4 @@ Date   | Description
 
 
 }
+
