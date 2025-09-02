@@ -3408,14 +3408,14 @@ Date   | Description
       // Issues for loops
       issues: this.decryptedReportDataChanged.report_vulns.map((vuln, index) => {
         const pocResult = this.preparePoCForDocx(vuln.poc || 'No proof of concept provided', vuln.poc_images || []);
-        
+        const descResult = this.preparePoCForDocx(vuln.desc || 'No description provided', vuln.desc_images || []);
 
         
         const issueData: any = {
           index: index + 1,
           title: vuln.title || 'Untitled Issue',
           severity: vuln.severity || 'Low',
-          description: vuln.desc || 'No description provided',
+          description: descResult.text || vuln.desc || 'No description provided',
           proof_of_concept: pocResult.text,       // legacy
 
           references: vuln.ref || 'No references provided',
@@ -3423,16 +3423,25 @@ Date   | Description
           cvss_vector: vuln.cvss_vector || 'N/A',
           cve: vuln.cve || 'N/A',
           tags: vuln.tags ? vuln.tags.join(', ') : 'None',
-          poc_blocks: pocResult.blocks            // new (array for loop)
+          poc_blocks: pocResult.blocks,           // new (array for loop)
+          desc_blocks: descResult.blocks          // new (array for loop for description)
         };
         
         // Add legacy image keys (optional for backward compatibility)
         Object.assign(issueData, pocResult.images);
+        Object.assign(issueData, descResult.images);
         
         // Add each block as a named property for direct reference
         pocResult.blocks.forEach(block => {
           if (block.name) {
             issueData[block.name] = block.content;
+          }
+        });
+        
+        // Add description blocks as named properties
+        descResult.blocks.forEach(block => {
+          if (block.name) {
+            issueData['desc_' + block.name] = block.content;
           }
         });
          
@@ -3986,6 +3995,46 @@ Date   | Description
             }
             // Store PoC images
             this.decryptedReportDataChanged.report_vulns[index].poc_images = result.pocImages;
+          }
+        }
+        this.afterDetectionNow();
+      }
+    });
+
+  }
+
+  editorFullscreenDesc(dec_data): void {
+
+    const index: number = this.decryptedReportDataChanged.report_vulns.indexOf(dec_data);
+
+    const dialogRef = this.dialog.open(DialogEditorFullscreenComponent, {
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      height: '100%',
+      width: '100%',
+      disableClose: false,
+      data: {
+        content: this.decryptedReportDataChanged.report_vulns[index].desc,
+        pocImages: this.decryptedReportDataChanged.report_vulns[index].desc_images || []
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      console.log('The Editor-fullscreen dialog was closed');
+      if (result) {
+        if (typeof result === 'string') {
+          // Legacy: just content
+          this.decryptedReportDataChanged.report_vulns[index].desc = result;
+        } else {
+          // New: content + images
+          this.decryptedReportDataChanged.report_vulns[index].desc = result.content || '';
+          if (result.pocImages && result.pocImages.length > 0) {
+            // Initialize desc_images if it doesn't exist
+            if (!this.decryptedReportDataChanged.report_vulns[index].desc_images) {
+              this.decryptedReportDataChanged.report_vulns[index].desc_images = [];
+            }
+            // Store description images
+            this.decryptedReportDataChanged.report_vulns[index].desc_images = result.pocImages;
           }
         }
         this.afterDetectionNow();
