@@ -30,7 +30,7 @@ export class DialogExportissuesComponent implements OnInit {
     "key": "$key"
   },
   "summary": "$title",
-  "description": "$desc \\n\\n POC: \\n $poc \\n\\n  Reference: \\n $ref",
+  "description": "$desc \\n\\n POC: \\n $poc \\n\\n  Reference: \\n $ref \\n\\n Affected Assets: \\n $affected_assets",
   "issuetype": {
     "name": "Bug"
   },

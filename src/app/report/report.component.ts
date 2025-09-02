@@ -3419,6 +3419,7 @@ Date   | Description
           proof_of_concept: pocResult.text,       // legacy
 
           references: vuln.ref || 'No references provided',
+          affected_assets: vuln.affected_assets || 'No affected assets specified',
           cvss: vuln.cvss || 'N/A',
           cvss_vector: vuln.cvss_vector || 'N/A',
           cve: vuln.cve || 'N/A',
