@@ -150,7 +150,15 @@ export class TemplatesListComponent implements OnInit {
     if (this.sourceSelect === "VULNREPO") {
 
       this.getvulnlistStatus = 'Loading...';
-      this.gettemplates();
+      this.http.get<any>('/assets/vulns.json?v=' + + new Date()).subscribe(res => {
+
+        this.dataSource.data = res;
+        this.countvulns = res;
+        this.dataSource.sort = this.sort;
+        this.dataSource.paginator = this.paginator;
+        this.getvulnlistStatus = '';
+
+      });
 
 
     } else if (this.sourceSelect === "CWE") {
