@@ -271,7 +271,7 @@ export class TemplatesListComponent implements OnInit {
 
         console.log(result);
 
-        this.indexeddbService.saveReportTemplateinDB({ "title": result.title, "poc": "", "desc": result.desc, "severity": result.severity, "ref": result.ref, "cvss": result.cvss, "cvss_vector": result.cvss_vector, "cve": result.cve, "tags": result.tags });
+        this.indexeddbService.saveReportTemplateinDB({ "title": result.title, "poc": "", "desc": result.desc, "recommendations": result.recommendations, "severity": result.severity, "ref": result.ref, "cvss": result.cvss, "cvss_vector": result.cvss_vector, "cve": result.cve, "tags": result.tags });
 
       }
 

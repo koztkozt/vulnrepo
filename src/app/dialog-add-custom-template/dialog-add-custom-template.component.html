@@ -19,6 +19,12 @@
     </div>
     <div fxLayoutAlign="start center">
         <mat-form-field class="example-full-width" color="accent">
+            <mat-label>Recommendations</mat-label>
+            <textarea matInput [formControl]="recommendations" placeholder="e.g: Update to latest version, implement input validation, configure proper access controls"></textarea>
+          </mat-form-field>
+    </div>
+    <div fxLayoutAlign="start center">
+        <mat-form-field class="example-full-width" color="accent">
             <mat-label>References</mat-label>
             <textarea matInput [formControl]="references" placeholder="e.g: https://owasp.org/www-community/attacks/Full_Path_Disclosure"></textarea>
           </mat-form-field>

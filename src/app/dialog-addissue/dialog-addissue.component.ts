@@ -30,6 +30,7 @@ export interface Vulns {
   desc: string;
   poc: string;
   ref: string;
+  recommendations: string; // Add this line
   severity: string;
   tags: Array<Tags>
 }
@@ -327,7 +328,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
               status: 1,
               ref: found.ref,
               affected_assets: '',
-              recommendations: '',
+              recommendations: found.recommendations || '',
               cvss: found.cvss,
               cvss_vector: found.cvss_vector,
               cve: found.cve,

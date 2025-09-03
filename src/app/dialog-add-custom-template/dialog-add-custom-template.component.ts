@@ -23,6 +23,7 @@ export class DialogAddCustomTemplateComponent implements OnInit {
   tablecon:any;
   templatename = new UntypedFormControl();
   description = new UntypedFormControl();
+  recommendations = new UntypedFormControl();
   references = new UntypedFormControl();
   severity = new UntypedFormControl();
   cvss = new UntypedFormControl();
@@ -45,6 +46,7 @@ export class DialogAddCustomTemplateComponent implements OnInit {
     if(this.data[0]){
       this.templatename.setValue(this.data[0].title);
       this.description.setValue(this.data[0].desc);
+      this.recommendations.setValue(this.data[0].recommendations);
       this.references.setValue(this.data[0].ref);
       this.severity.setValue(this.data[0].severity);
       this.cvss.setValue(this.data[0].cvss);
@@ -59,26 +61,39 @@ export class DialogAddCustomTemplateComponent implements OnInit {
 
     const templatename = this.templatename.value || '';
     const description = this.description.value || '';
+    const recommendations = this.recommendations.value || '';
     const severity = this.severity.value || '';
     const references = this.references.value || '';
     const cvss = this.cvss.value || '';
     const cvss_vector = this.cvss_vector.value || '';
     const cve = this.cve.value || '';
 
-    this.dialogRef.close({"title": templatename,"poc": "","desc": description,"severity": severity,"ref": references,"cvss": cvss,"cvss_vector": cvss_vector,"cve": cve, "tags": this.tags});
+    this.dialogRef.close({"title": templatename,"poc": "","desc": description,"recommendations": recommendations,"severity": severity,"ref": references,"cvss": cvss,"cvss_vector": cvss_vector,"cve": cve, "tags": this.tags});
   }
 
   edit(item): void {
 
     const templatename = this.templatename.value || '';
     const description = this.description.value || '';
+    const recommendations = this.recommendations.value || '';
     const severity = this.severity.value || '';
     const references = this.references.value || '';
     const cvss = this.cvss.value || '';
     const cvss_vector = this.cvss_vector.value || '';
     const cve = this.cve.value || '';
 
-    this.dialogRef.close([{"title": templatename,"poc": "","desc": description,"severity": severity,"ref": references,"cvss": cvss,"cvss_vector": cvss_vector,"cve": cve, "tags": this.tags},{"original": item}]);
+    this.dialogRef.close([{
+      "title": templatename,
+      "poc": "",
+      "desc": description,
+      "recommendations": recommendations,
+      "severity": severity,
+      "ref": references,
+      "cvss": cvss,
+      "cvss_vector": cvss_vector,
+      "cve": cve, 
+      "tags": this.tags
+    }, {"original": item}]);
   }
 
 
