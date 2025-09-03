@@ -74,9 +74,10 @@
           <td mat-cell *matCellDef="let element;let i=index" [attr.colspan]="displayedColumns.length">
             <div class="example-element-detail" [@detailExpand]="element.expanded ? 'expanded' : 'collapsed'">
               <div class="example-element-description">
-                <b>Description: </b>{{element.desc}}<br>
+                <b>Description: </b><span class="preserve-newlines">{{element.desc}}</span><br>
                 <b *ngIf="element.cve">CVE: {{element.cve}}</b><br>
-                <b>Reference:</b>{{element.ref}}<br>
+                <b *ngIf="element.recommendations">Recommendations: </b><span class="preserve-newlines">{{element.recommendations}}</span><br>
+                <b>Reference: </b><span class="preserve-newlines">{{element.ref}}</span><br>
               </div>
             </div>
           </td>

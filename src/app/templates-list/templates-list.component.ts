@@ -79,7 +79,7 @@ export class TemplatesListComponent implements OnInit {
       if (ret) {
         this.local = ret;
 
-        this.http.get<any>('/assets/vulns.json?v=' + + new Date()).subscribe(res => {
+        this.http.get<any>('/assets/custom.json?v=' + + new Date()).subscribe(res => {
           if (res) {
             this.json = res;
 
