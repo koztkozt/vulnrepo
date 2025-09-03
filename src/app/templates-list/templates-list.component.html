@@ -16,6 +16,8 @@
             <mat-label>Select a source</mat-label>
           
             <mat-select disableRipple [(value)]="sourceSelect" (selectionChange)="changeselect()">
+              
+              <mat-option value="CUSTOM">Custom Templates</mat-option>
               <mat-option value="VULNREPO">VULNRΞPO</mat-option>
               <mat-option value="CWE">CWE Research Concepts</mat-option>
               <mat-option value="MENTERPRISE">MITRE ATT&CK Enterprise</mat-option>

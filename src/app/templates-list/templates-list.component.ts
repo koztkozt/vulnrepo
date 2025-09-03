@@ -51,7 +51,7 @@ export class TemplatesListComponent implements OnInit {
   getvulnlistStatus = '';
   countvulns:any = [];
   expandedElement: VulnsList | null;
-  sourceSelect = 'VULNREPO';
+  sourceSelect = 'CUSTOM';
   reportTemplateList_int:any = [];
   reportTemplateList:any = [];
   local = [];
@@ -241,6 +241,20 @@ export class TemplatesListComponent implements OnInit {
 
       this.getvulnlistStatus = 'Loading...';
       this.http.get<any>('/assets/OWASPtop10k8s.json?v=' + + new Date()).subscribe(res => {
+
+        this.dataSource.data = res;
+        this.countvulns = res;
+        this.dataSource.sort = this.sort;
+        this.dataSource.paginator = this.paginator;
+        this.getvulnlistStatus = '';
+
+      });
+
+
+    } else if (this.sourceSelect === "CUSTOM") {
+
+      this.getvulnlistStatus = 'Loading...';
+      this.http.get<any>('/assets/custom.json?v=' + + new Date()).subscribe(res => {
 
         this.dataSource.data = res;
         this.countvulns = res;

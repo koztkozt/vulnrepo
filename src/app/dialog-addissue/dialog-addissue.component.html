@@ -8,6 +8,7 @@
     <mat-form-field appearance="outline" color="accent" class="example-full-width">
       <mat-label>Templates source</mat-label>
       <mat-select [(value)]="sourceSelect" (selectionChange)="changeselect()" [disabled]="freeztype">
+        <mat-option value="CUSTOM"><mat-icon color="accent">custom_home</mat-icon> Custom Templates</mat-option>
         <mat-option value="VULNREPO"><img with="20" height="20" src="/favicon-32x32.png"> VULNRΞPO</mat-option>
         <mat-option value="CVE"><mat-icon color="accent">public</mat-icon> (CVE) Common Vulnerabilities and Exposures
           (ONLINE)</mat-option>

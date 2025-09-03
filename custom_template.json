@@ -1,0 +1,28 @@
+[
+    {
+        "_key": 6,
+        "title": "[XSS] Stored cross-site scripting 2",
+        "poc": "",
+        "desc": "Stored cross-site scripting (also known as second-order or persistent XSS) arises when an application receives data from an untrusted source and includes that data within its later `HTTP` responses in an unsafe way.\n\n![image.png](poc-img:img_1756801858047_hb85hoe2z)\n\n\n```\nDescription\n```\n\n\n",
+        "recommendations": "testtest",
+        "severity": "Medium",
+        "ref": "https://www.owasp.org/index.php/Cross-site_Scripting_(XSS)\nhttps://en.wikipedia.org/wiki/Cross-site_scripting\nhttps://portswigger.net/web-security/cross-site-scripting/stored",
+        "cvss": "4.3",
+        "cvss_vector": "",
+        "cve": "",
+        "tags": []
+    },
+    {
+        "_key": 7,
+        "title": "Reflected XSS in 2ClickPortal",
+        "poc": "",
+        "desc": "Improper neutralization of input during web page generation vulnerability in 2ClickPortal software allows reflected cross-site scripting (XSS). An attacker might trick somebody into using a crafted URL, which will cause a script to be run in user's browser. This issue affects 2ClickPortal software versions from 7.2.31 through 7.6.4.",
+        "recommendations": "testtest",
+        "severity": "Medium",
+        "ref": "https://cert.pl/en/posts/2024/06/CVE-2024-5961/\nhttps://cert.pl/posts/2024/06/CVE-2024-5961/\nhttps://2clickportal.pl/\n",
+        "cvss": 5.3,
+        "cvss_vector": "",
+        "cve": "CVE-2024-5961",
+        "tags": []
+    }
+]

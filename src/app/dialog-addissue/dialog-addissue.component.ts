@@ -80,6 +80,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
   OWASPTOP10k8s: Vulns[] = [];
   AIVULNS: Vulns[] = [];
   owaspmobile2024: Vulns[] = [];
+  custom: Vulns[] = [];
   filteredOptions: Observable<Vulns[]>;
 
   freeztype = true;
@@ -88,7 +89,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
   filteredOptionsPCIDSS: Observable<string[]>;
 
   err_msg: string;
-  sourceSelect = 'VULNREPO';
+  sourceSelect = 'CUSTOM';
   show = false;
   separatorKeysCodes: number[] = [ENTER, COMMA];
   announcer = inject(LiveAnnouncer);
@@ -237,8 +238,9 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
     const cweapi = this.http.get<any>('/assets/CWE_V.4.3.json?v=' + + new Date());
     const mitreenterpriseapi = this.http.get<any>('/assets/enterprise-attack.json?v=' + + new Date());
     const mitremobileapi = this.http.get<any>('/assets/mobile-attack.json?v=' + + new Date());
+    const customapi = this.http.get<any>('/assets/custom.json?v=' + + new Date());
 
-    forkJoin([owasptop2017api, owasptop2021api, OWASPTOP10CICDapi, OWASPTOP10k8sapi, AIVULNSapi, owaspmobile2024api, cweapi, mitreenterpriseapi, mitremobileapi])
+    forkJoin([owasptop2017api, owasptop2021api, OWASPTOP10CICDapi, OWASPTOP10k8sapi, AIVULNSapi, owaspmobile2024api, cweapi, mitreenterpriseapi, mitremobileapi, customapi])
       .subscribe(
         result => {
           this.owasptop2017 = result[0];
@@ -250,6 +252,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
           this.cwe = result[6];
           this.mitreenterprise = result[7];
           this.mitremobile = result[8];
+          this.custom = result[9];
           this.freeztype = false;
         }
       )
@@ -440,6 +443,16 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
       this.dataSource.sort = this.sort;
       this.dataSource.data = this.mitremobile;
       this.placeholder = "e.g.: Application Discovery";
+
+    }
+
+    if (this.sourceSelect === 'CUSTOM') {
+
+      this.hidecwe = false;
+      this.dataSource.paginator = this.paginator;
+      this.dataSource.sort = this.sort;
+      this.dataSource.data = this.custom;
+      this.placeholder = "e.g.: Information Gathering, SQL Injection";
 
     }
 
