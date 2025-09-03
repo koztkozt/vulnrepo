@@ -355,7 +355,7 @@
 
             <div fxFlex="70%" fxFlex.sm="70%" fxFlex.xs="100%">
               <mat-form-field appearance="outline" class="example-full-width" color="accent">
-                <mat-label>Proof of Concept</mat-label>
+                <mat-label>Evidence/Proof of Concept</mat-label>
 
                 <div style="position:relative;">
                   <textarea #textareaheight [(ngModel)]="dec_data.poc" (change)="changePoC(dec_data)" matInput rows="8"
@@ -426,7 +426,7 @@
               
               <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
                 <mat-form-field appearance="outline" class="example-full-width" color="accent">
-                  <mat-label>Description</mat-label>
+                  <mat-label>Impact/Description</mat-label>
 
                   <div style="position:relative;">
                     <textarea [(ngModel)]="dec_data.desc" matInput rows="3" style="display:block;"></textarea>
@@ -475,19 +475,17 @@
 
                 <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
                   <mat-form-field appearance="outline" class="example-full-width" color="accent">
-                    <mat-label>Affected Assets/Paths</mat-label>
-                    <textarea [(ngModel)]="dec_data.affected_assets" matInput rows="3" placeholder="e.g., /admin/login, 192.168.1.10, api.example.com/user"></textarea>
-                  </mat-form-field>
-                </div>
-
-                <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
-                  <mat-form-field appearance="outline" class="example-full-width" color="accent">
                     <mat-label>Recommendations</mat-label>
                     <textarea [(ngModel)]="dec_data.recommendations" matInput rows="3" placeholder="e.g., Update to latest version, implement input validation, configure proper access controls"></textarea>
                   </mat-form-field>
                 </div>
 
-
+                <div fxFlex="100%" fxFlex.sm="100%" fxFlex.xs="100%">
+                  <mat-form-field appearance="outline" class="example-full-width" color="accent">
+                    <mat-label>Affected Assets/Paths</mat-label>
+                    <textarea [(ngModel)]="dec_data.affected_assets" matInput rows="3" placeholder="e.g., /admin/login, 192.168.1.10, api.example.com/user"></textarea>
+                  </mat-form-field>
+                </div>
 
                 <div fxFlex="50%" fxFlex.sm="50%" fxFlex.xs="100%">
                   <mat-form-field class="example-full-width" color="accent">
