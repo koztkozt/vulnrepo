@@ -212,7 +212,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
     this.freeztype = true;
     this.indexeddbService.retrieveReportTemplates().then(ret => {
       if (ret) {
-        this.http.get<any>('/assets/vulns.json?v=' + + new Date()).subscribe(res => {
+        this.http.get<any>('/assets/custom.json?v=' + + new Date()).subscribe(res => {
           this.options = [...res, ...ret];
           this.optionsv = this.options;
           this.getAPITemplates();
@@ -254,6 +254,7 @@ export class DialogAddissueComponent implements OnInit, AfterViewInit {
           this.mitremobile = result[8];
           this.custom = result[9];
           this.freeztype = false;
+          this.changeselect(); // Initialize the selected source data
         }
       )
   }
