@@ -3409,6 +3409,7 @@ Date   | Description
       issues: this.decryptedReportDataChanged.report_vulns.map((vuln, index) => {
         const pocResult = this.preparePoCForDocx(vuln.poc || 'No proof of concept provided', vuln.poc_images || []);
         const descResult = this.preparePoCForDocx(vuln.desc || 'No description provided', vuln.desc_images || []);
+        const recommendationsResult = this.preparePoCForDocx(vuln.recommendations || 'No recommendations provided', vuln.recommendations_images || []);
 
         
         const issueData: any = {
@@ -3420,18 +3421,20 @@ Date   | Description
 
           references: vuln.ref || 'No references provided',
           affected_assets: vuln.affected_assets || 'No affected assets specified',
-          recommendations: vuln.recommendations || 'No recommendations provided',
+          recommendations: recommendationsResult.text || vuln.recommendations || 'No recommendations provided',
           cvss: vuln.cvss || 'N/A',
           cvss_vector: vuln.cvss_vector || 'N/A',
           cve: vuln.cve || 'N/A',
           tags: vuln.tags ? vuln.tags.join(', ') : 'None',
           poc_blocks: pocResult.blocks,           // new (array for loop)
-          desc_blocks: descResult.blocks          // new (array for loop for description)
+          desc_blocks: descResult.blocks,         // new (array for loop for description)
+          recommendations_blocks: recommendationsResult.blocks // new (array for loop for recommendations)
         };
         
         // Add legacy image keys (optional for backward compatibility)
         Object.assign(issueData, pocResult.images);
         Object.assign(issueData, descResult.images);
+        Object.assign(issueData, recommendationsResult.images);
         
         // Add each block as a named property for direct reference
         pocResult.blocks.forEach(block => {
@@ -3444,6 +3447,13 @@ Date   | Description
         descResult.blocks.forEach(block => {
           if (block.name) {
             issueData['desc_' + block.name] = block.content;
+          }
+        });
+        
+        // Add recommendations blocks as named properties
+        recommendationsResult.blocks.forEach(block => {
+          if (block.name) {
+            issueData['recommendations_' + block.name] = block.content;
           }
         });
          
@@ -4037,6 +4047,46 @@ Date   | Description
             }
             // Store description images
             this.decryptedReportDataChanged.report_vulns[index].desc_images = result.pocImages;
+          }
+        }
+        this.afterDetectionNow();
+      }
+    });
+
+  }
+
+  editorFullscreenRecommendations(dec_data): void {
+
+    const index: number = this.decryptedReportDataChanged.report_vulns.indexOf(dec_data);
+
+    const dialogRef = this.dialog.open(DialogEditorFullscreenComponent, {
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      height: '100%',
+      width: '100%',
+      disableClose: false,
+      data: {
+        content: this.decryptedReportDataChanged.report_vulns[index].recommendations,
+        pocImages: this.decryptedReportDataChanged.report_vulns[index].recommendations_images || []
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      console.log('The Editor-fullscreen dialog was closed');
+      if (result) {
+        if (typeof result === 'string') {
+          // Legacy: just content
+          this.decryptedReportDataChanged.report_vulns[index].recommendations = result;
+        } else {
+          // New: content + images
+          this.decryptedReportDataChanged.report_vulns[index].recommendations = result.content || '';
+          if (result.pocImages && result.pocImages.length > 0) {
+            // Initialize recommendations_images if it doesn't exist
+            if (!this.decryptedReportDataChanged.report_vulns[index].recommendations_images) {
+              this.decryptedReportDataChanged.report_vulns[index].recommendations_images = [];
+            }
+            // Store recommendations images
+            this.decryptedReportDataChanged.report_vulns[index].recommendations_images = result.pocImages;
           }
         }
         this.afterDetectionNow();
